@@ -6,11 +6,14 @@ from gremlin_python.driver import serializer
 from aiogremlin.remote.driver_remote_side_effects import (
     AsyncRemoteTraversalSideEffects)
 from gremlin_python.driver.remote_connection import RemoteTraversal
+from autologging import logged, traced
 
 
 __author__ = 'David M. Brown (davebshow@gmail.com)'
 
 
+@logged
+@traced
 class DriverRemoteConnection:
     """
     Remote connection to a Gremlin Server. Do not instantiate directly,
@@ -22,7 +25,7 @@ class DriverRemoteConnection:
     :param aiogremlin.driver.cluster.Cluster cluster:
     """
 
-    def __init__(self, client, loop, *, cluster=None):
+    def __init__(self, *, client, loop=None, cluster=None):
         self._client = client
         self._loop = loop
         self._cluster = cluster
@@ -47,10 +50,10 @@ class DriverRemoteConnection:
         """
         client = await cluster.connect(aliases=aliases)
         loop = cluster._loop
-        return cls(client, loop)
+        return cls(client=client, loop=loop)
 
     @classmethod
-    async def open(cls, url=None, aliases=None, loop=None, *,
+    async def open(cls, *, url=None, aliases=None, loop=None,
                    graphson_reader=None, graphson_writer=None, **config):
         """
         :param str url: Optional url for host Gremlin Server
@@ -70,15 +73,15 @@ class DriverRemoteConnection:
                 'port': parsed_url.port})
         if isinstance(aliases, str):
             aliases = {'g': aliases}
-        if not loop:
-            loop = asyncio.get_event_loop()
+        # if not loop:
+        #     loop = asyncio.get_event_loop()
         message_serializer = serializer.GraphSONMessageSerializer(
             reader=graphson_reader,
             writer=graphson_writer)
         config.update({'message_serializer': message_serializer})
-        cluster = await Cluster.open(loop, aliases=aliases, **config)
+        cluster = await Cluster.open(loop=loop, aliases=aliases, **config)
         client = await cluster.connect()
-        return cls(client, loop, cluster=cluster)
+        return cls(client=client, loop=loop, cluster=cluster)
 
     async def close(self):
         """

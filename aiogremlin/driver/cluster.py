@@ -14,6 +14,8 @@ from aiogremlin import exception
 from aiogremlin import driver
 from gremlin_python.driver import serializer
 
+from autologging import logged, traced
+
 
 def my_import(name):
     names = name.rsplit('.', maxsplit=1)
@@ -28,6 +30,8 @@ def my_import(name):
     return getattr(module, class_name)
 
 
+@logged
+@traced
 class Cluster:
     """
     A cluster of Gremlin Server hosts. This object provides the main high
@@ -56,7 +60,7 @@ class Cluster:
         'provider': 'aiogremlin.driver.provider.TinkerGraph'
     }
 
-    def __init__(self, loop, aliases=None, **config):
+    def __init__(self, loop=None, aliases=None, **config):
         self._loop = loop
         default_config = dict(self.DEFAULT_CONFIG)
         default_config.update(config)
@@ -69,7 +73,7 @@ class Cluster:
         self._aliases = aliases
 
     @classmethod
-    async def open(cls, loop, *, aliases=None, configfile=None, **config):
+    async def open(cls, *, loop=None, aliases=None, configfile=None, **config):
         """
         **coroutine** Open a cluster, connecting to all available hosts as
         specified in configuration.
@@ -80,7 +84,7 @@ class Cluster:
             .yml format
         :param config: Optional cluster configuration passed as kwargs or `dict`
         """
-        cluster = cls(loop, aliases=aliases, **config)
+        cluster = cls(loop=loop, aliases=aliases, **config)
         if configfile:
             cluster.config_from_file(configfile)
         await cluster.establish_hosts()
@@ -131,7 +135,7 @@ class Cluster:
         for hostname in hosts:
             url = '{}://{}:{}/gremlin'.format(scheme, hostname, port)
             host = await driver.GremlinServer.open(
-                url, self._loop, **dict(self._config))
+                url=url, loop=self._loop, **dict(self._config))
             self._hosts.append(host)
             self._hostmap[hostname] = host
 
@@ -155,7 +159,7 @@ class Cluster:
         :param str filename: Path to the configuration file.
         """
         with open(filename, 'r') as f:
-            config = yaml.load(f)
+            config = yaml.load(f, Loader=yaml.FullLoader)
         config = self._process_config_imports(config)
         self._config.update(config)
 
@@ -210,7 +214,7 @@ class Cluster:
         #                                     aliases=aliases)
         #     self._hosts.append(host)
         # else:
-        client = driver.Client(self, self._loop, hostname=hostname,
+        client = driver.Client(cluster=self, loop=self._loop, hostname=hostname,
                                aliases=aliases)
         return client
 

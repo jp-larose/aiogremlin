@@ -2,7 +2,10 @@ import asyncio
 
 from gremlin_python.process import traversal
 
+from autologging import logged, traced
 
+@logged
+@traced
 class AsyncTraversalStrategies(traversal.TraversalStrategies):
 
     async def apply_strategies(self, traversal):

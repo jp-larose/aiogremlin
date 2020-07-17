@@ -1,40 +1,47 @@
-'''
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 
-http://www.apache.org/licenses/LICENSE-2.0
+# THIS FILE HAS BEEN MODIFIED BY DAVID M. BROWN TO SUPPORT PEP 492
 
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
-'''
-'''THIS FILE HAS BEEN MODIFIED BY DAVID M. BROWN TO SUPPORT PEP 492'''
 import pytest
+import logging
 
 from gremlin_python.driver.request import RequestMessage
 from aiogremlin.structure.graph import Graph
 
 __author__ = 'David M. Brown (davebshow@gmail.com)'
 
+log = logging.getLogger(__name__)
 
 @pytest.mark.asyncio
 async def test_connection(connection):
+    log.debug("begin: test_connection")
     g = Graph().traversal()
     t = g.V()
     message = RequestMessage('traversal', 'bytecode', {'gremlin': t.bytecode})
+    log.debug(f"{g=}, {t=}, {message=}")
     results_set = await connection.write(message)
+    log.debug(f"{results_set=}")
     results = await results_set.all()
+    log.debug(f"{results=}")
     assert len(results) == 6
     assert isinstance(results, list)
-    await connection.close()
+    # await connection.close()
+    log.debug("end: test_connection")
 
 
 @pytest.mark.asyncio
@@ -51,6 +58,7 @@ async def test_client_simple_eval_bindings(client):
     results = await result_set.all()
     assert results[0] == 4
     await client.close()
+
 
 @pytest.mark.asyncio
 async def test_client_eval_traversal(client):
@@ -69,6 +77,7 @@ async def test_client_bytecode(client):
     results = await result_set.all()
     assert len(results) == 6
     await client.close()
+
 
 @pytest.mark.asyncio
 async def test_iterate_result_set(client):

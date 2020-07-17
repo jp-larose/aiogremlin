@@ -3,7 +3,11 @@ from aiogremlin.remote.remote_connection import AsyncRemoteStrategy
 
 from gremlin_python.process import graph_traversal, traversal
 
+from autologging import logged, traced
 
+
+@logged
+@traced
 class AsyncGraphTraversal(graph_traversal.GraphTraversal):
     """Implements async iteration protocol and updates relevant methods"""
 
@@ -15,14 +19,14 @@ class AsyncGraphTraversal(graph_traversal.GraphTraversal):
             await self.traversal_strategies.apply_strategies(self)
         if self.last_traverser is None:
             self.last_traverser = await self.traversers.__anext__()
-        object = self.last_traverser.object
-        self.last_traverser.bulk = self.last_traverser.bulk - 1
+        obj = self.last_traverser.object
+        self.last_traverser.bulk -= 1
         if self.last_traverser.bulk <= 0:
             self.last_traverser = None
-        return object
+        return obj
 
     async def toList(self):
-        """Reture results as ``list``."""
+        """Return results as ``list``."""
         results = []
         async for result in self:
             results.append(result)
@@ -71,11 +75,15 @@ class AsyncGraphTraversal(graph_traversal.GraphTraversal):
         return results
 
 
+@logged
+@traced
 class __(graph_traversal.__):
 
     graph_traversal = AsyncGraphTraversal
 
 
+@logged
+@traced
 class AsyncGraphTraversalSource(graph_traversal.GraphTraversalSource):
 
     def __init__(self, *args, **kwargs):

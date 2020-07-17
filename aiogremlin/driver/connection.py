@@ -2,6 +2,8 @@ import asyncio
 import logging
 import uuid
 
+from autologging import logged, traced
+
 try:
     import ujson as json
 except ImportError:
@@ -16,6 +18,8 @@ from gremlin_python.driver import serializer
 logger = logging.getLogger(__name__)
 
 
+@logged
+@traced
 class Connection:
     """
     Main classd for interacting with the Gremlin Server. Encapsulates a
@@ -45,7 +49,7 @@ class Connection:
         self._password = password
         self._closed = False
         self._result_sets = {}
-        self._receive_task = self._loop.create_task(self._receive())
+        self._receive_task = asyncio.create_task(self._receive())
         self._semaphore = asyncio.Semaphore(value=max_inflight,
                                             loop=self._loop)
         if isinstance(message_serializer, type):
@@ -54,7 +58,7 @@ class Connection:
         self._provider = provider
 
     @classmethod
-    async def open(cls, url, loop, *,
+    async def open(cls, *, url, loop=None,
                    protocol=None,
                    transport_factory=None,
                    ssl_context=None,
@@ -136,7 +140,7 @@ class Connection:
         result_set = resultset.ResultSet(request_id, self._response_timeout,
                                    self._loop)
         self._result_sets[request_id] = result_set
-        self._loop.create_task(
+        asyncio.create_task(
             self._terminate_response(result_set, request_id))
         return result_set
 

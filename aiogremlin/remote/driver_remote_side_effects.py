@@ -1,8 +1,12 @@
 from gremlin_python.driver import request
 from gremlin_python.process import traversal
 
+import asyncio
+from autologging import logged, traced
 
 
+@logged
+@traced
 class AsyncRemoteTraversalSideEffects(traversal.TraversalSideEffects):
     def __init__(self, side_effect, client):
         self._side_effect = side_effect
@@ -11,11 +15,11 @@ class AsyncRemoteTraversalSideEffects(traversal.TraversalSideEffects):
         self._side_effects = {}
         self._closed = False
 
-    async def __getitem__(self, key):
+    def __getitem__(self, key):
         if isinstance(key, slice):
             raise TypeError(
                 'AsyncRemoteTraversalSideEffects does not support slicing')
-        return await self.get(key)
+        return self.get(key)
 
     async def keys(self):
         """Get side effect keys associated with Traversal"""
@@ -50,12 +54,14 @@ class AsyncRemoteTraversalSideEffects(traversal.TraversalSideEffects):
 
     async def close(self):
         """Release side effects"""
-        if not self._closed:
-            message = request.RequestMessage(
-                'traversal', 'close',
-                {'sideEffect': self._side_effect,
-                 'aliases': {'g': self._client.aliases}})
-            result_set = await self._client.submit(message)
+        if self._closed:
+            return
+
+        message = request.RequestMessage(
+            'traversal', 'close',
+            {'sideEffect': self._side_effect,
+             'aliases': {'g': self._client.aliases}})
+        result_set = await self._client.submit(message)
         self._closed = True
         return await result_set.one()
 
@@ -63,6 +69,7 @@ class AsyncRemoteTraversalSideEffects(traversal.TraversalSideEffects):
         aggregates = {'list': [], 'set': set(), 'map': {}, 'bulkset': {},
                       'none': None}
         results = None
+        aggregate_to = ""
         async for msg in result_set:
             if results is None:
                 aggregate_to = result_set.aggregate_to
@@ -85,3 +92,6 @@ class AsyncRemoteTraversalSideEffects(traversal.TraversalSideEffects):
         if results is None:
             results = []
         return results
+
+    def __repr__(self):
+        return "asyncSideEffects[*]"

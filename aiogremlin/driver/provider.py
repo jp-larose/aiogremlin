@@ -1,3 +1,8 @@
+from autologging import logged, traced
+
+
+@logged
+@traced
 class Provider:
     """Superclass for provider plugins"""
     DEFAULT_OP_ARGS = {}
@@ -7,6 +12,8 @@ class Provider:
         return cls.DEFAULT_OP_ARGS.get(processor, dict())
 
 
+@logged
+@traced
 class TinkerGraph(Provider):  # TODO
     """Default provider"""
     @staticmethod

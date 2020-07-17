@@ -5,7 +5,11 @@ import aiohttp
 
 from aiogremlin.driver import connection
 
+from autologging import logged, traced
 
+
+@logged
+@traced
 class PooledConnection:
     """
     Wrapper for :py:class:`Connection<aiogremlin.driver.connection.Connection>`
@@ -92,8 +96,8 @@ class ConnectionPool:
         one time on the connection
     """
 
-    def __init__(self, url, loop, ssl_context, username, password, max_conns,
-                 min_conns, max_times_acquired, max_inflight, response_timeout,
+    def __init__(self, *, url, loop=None, ssl_context=None, username='', password='', max_conns,
+                 min_conns, max_times_acquired, max_inflight, response_timeout=None,
                  message_serializer, provider):
         self._url = url
         self._loop = loop
@@ -110,6 +114,15 @@ class ConnectionPool:
         self._available = collections.deque()
         self._acquired = collections.deque()
         self._provider = provider
+
+    @classmethod
+    async def open(cls, *, url, loop=None, ssl_context=None, username='', password='', max_conns,
+                 min_conns, max_times_acquired, max_inflight, response_timeout=None,
+                 message_serializer, provider):
+        pool = cls(url=url, loop=loop, ssl_context=ssl_context, username=username, password=password, max_conns=max_conns,
+                   min_conns=min_conns, max_times_acquired=max_times_acquired, max_inflight=max_inflight,
+                   response_timeout=response_timeout, message_serializer=message_serializer, provider=provider)
+        return pool
 
     @property
     def url(self):
@@ -144,7 +157,7 @@ class ConnectionPool:
             if not conn.times_acquired:
                 self._acquired.remove(conn)
                 self._available.append(conn)
-        self._loop.create_task(self._notify())
+        asyncio.create_task(self._notify())
 
     async def _notify(self):
         async with self._condition:
@@ -194,7 +207,7 @@ class ConnectionPool:
     async def _get_connection(self, username, password, max_inflight,
                               response_timeout, message_serializer, provider):
         conn = await connection.Connection.open(
-            self._url, self._loop, ssl_context=self._ssl_context,
+            url=self._url, loop=self._loop, ssl_context=self._ssl_context,
             username=username, password=password,
             response_timeout=response_timeout,
             message_serializer=message_serializer, provider=provider)

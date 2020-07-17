@@ -1,8 +1,11 @@
 import ssl
 
 from aiogremlin.driver import pool
+from autologging import logged, traced
 
 
+@logged
+@traced
 class GremlinServer:
     """
     Class that wraps a connection pool. Currently doesn't do much, but may
@@ -11,7 +14,7 @@ class GremlinServer:
     :param pool.ConnectionPool pool:
     """
 
-    def __init__(self, url, loop, **config):
+    def __init__(self, url, loop=None, **config):
         self._pool = None
         self._url = url
         self._loop = loop
@@ -66,15 +69,15 @@ class GremlinServer:
 
     async def initialize(self):
         conn_pool = pool.ConnectionPool(
-            self._url, self._loop, self._ssl_context, self._username,
-            self._password, self._max_conns, self._min_conns,
-            self._max_times_acquired, self._max_inflight,
-            self._response_timeout, self._message_serializer, self._provider)
+            url=self._url, loop=self._loop, ssl_context=self._ssl_context, username=self._username,
+            password=self._password, max_conns=self._max_conns, min_conns=self._min_conns,
+            max_times_acquired=self._max_times_acquired, max_inflight=self._max_inflight,
+            response_timeout=self._response_timeout, message_serializer=self._message_serializer, provider=self._provider)
         await conn_pool.init_pool()
         self._pool = conn_pool
 
     @classmethod
-    async def open(cls, url, loop, **config):
+    async def open(cls, url, loop=None, **config):
         """
         **coroutine** Establish connection pool and host to Gremlin Server.
 
@@ -94,6 +97,6 @@ class GremlinServer:
         :returns: :py:class:`GremlinServer`
         """
 
-        host = cls(url, loop, **config)
+        host = cls(url=url, loop=loop, **config)
         await host.initialize()
         return host

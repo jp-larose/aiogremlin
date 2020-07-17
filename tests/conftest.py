@@ -16,6 +16,7 @@
 # along with Goblin.  If not, see <http://www.gnu.org/licenses/>.
 import asyncio
 import pytest
+import logging
 
 from aiogremlin.structure.graph import Graph
 from gremlin_python.process.traversal import T
@@ -24,6 +25,7 @@ from aiogremlin.driver.provider import TinkerGraph
 from gremlin_python.driver import serializer
 from aiogremlin.remote.driver_remote_connection import DriverRemoteConnection
 
+log = logging.getLogger(__name__)
 
 # def pytest_generate_tests(metafunc):
 #     if 'cluster' in metafunc.fixturenames:
@@ -86,31 +88,39 @@ def gremlin_url(gremlin_host, gremlin_port):
 
 
 @pytest.fixture
-def connection(gremlin_url, event_loop, provider):
+async def connection(gremlin_url, provider):
+    log.debug('starting fixture: connection')
     try:
-        conn = event_loop.run_until_complete(
-            driver.Connection.open(
-                gremlin_url, event_loop,
+        conn = await driver.Connection.open(
+                url=gremlin_url,
                 message_serializer=serializer.GraphSONMessageSerializer,
                 provider=provider
-            ))
+            )
     except OSError:
         pytest.skip('Gremlin Server is not running')
-    return conn
+    log.debug(f"{conn=}")
+    yield conn
+
+    log.debug('tearing down fixture: connection')
+    if not conn.closed:
+        await conn.close()
 
 
 @pytest.fixture
-def connection_pool(gremlin_url, event_loop, provider):
-    return driver.ConnectionPool(
-        gremlin_url, event_loop, None, '', '', 4, 1, 16,
-        64, None, serializer.GraphSONMessageSerializer, provider=provider)
+async def connection_pool(gremlin_url, provider):
+    pool = await driver.ConnectionPool.open(
+        url=gremlin_url, max_conns=4, min_conns=1, max_times_acquired=16,
+        max_inflight=64, response_timeout=10000, message_serializer=serializer.GraphSONMessageSerializer, provider=provider)
+
+    yield pool
+
+    await pool.close()
 
 
 @pytest.fixture
-def cluster(request, gremlin_host, gremlin_port, event_loop, provider, aliases):
+async def cluster(request, gremlin_host, gremlin_port, provider, aliases):
     # if request.param == 'c1':
-    cluster = driver.Cluster(
-        event_loop,
+    cluster = await driver.Cluster.open(
         hosts=[gremlin_host],
         port=gremlin_port,
         aliases=aliases,
@@ -119,37 +129,41 @@ def cluster(request, gremlin_host, gremlin_port, event_loop, provider, aliases):
     )
     # elif request.param == 'c2':
     #     cluster = driver.Cluster(
-    #         event_loop,
     #         hosts=[gremlin_host],
     #         port=gremlin_port,
     #         aliases=aliases,
     #         message_serializer=serializer.GraphSONMessageSerializer,
     #         provider=provider
     #     )
-    return cluster
+    yield cluster
+    await cluster.close()
+
 
 # TOOO FIX
 # @pytest.fixture
 # def remote_graph():
 #      return driver.AsyncGraph()
 
+
 # Class fixtures
 @pytest.fixture
-def cluster_class(event_loop):
+def cluster_class():
     return driver.Cluster
 
+
 @pytest.fixture
-def remote_connection(event_loop, gremlin_url):
+async def remote_connection(gremlin_url):
     try:
-        remote_conn = event_loop.run_until_complete(
-            DriverRemoteConnection.open(gremlin_url, 'g'))
+        remote_conn = await DriverRemoteConnection.open(url=gremlin_url, aliases='g')
     except OSError:
         pytest.skip('Gremlin Server is not running')
     else:
-        return remote_conn
+        yield remote_conn
+        await remote_conn.close()
+
 
 @pytest.fixture(autouse=True)
-def run_around_tests(remote_connection, event_loop):
+async def run_around_tests(remote_connection):
     g = Graph().traversal().withRemote(remote_connection)
 
     async def create_graph():
@@ -168,6 +182,7 @@ def run_around_tests(remote_connection, event_loop):
         created3 = await g.addE("created").from_(person3).to(software1).property("weight", 1.0).property(T.id, 11).next()
         created4 = await g.addE("created").from_(person4).to(software1).property("weight", 0.2).property(T.id, 12).next()
 
-    event_loop.run_until_complete(create_graph())
-
+    #loop = asyncio.get_event_loop()
+    #loop.run_until_complete(create_graph())
+    await create_graph()
     yield

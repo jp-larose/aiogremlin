@@ -1,11 +1,16 @@
-"""Client for the Tinkerpop 3 Gremlin Server."""
+#"""Client for the Tinkerpop 3 Gremlin Server."""
+import asyncio
 
 from aiogremlin import exception
 
 from gremlin_python.driver import request
 from gremlin_python.process import traversal
 
+from autologging import logged, traced
 
+
+@logged
+@traced
 class Client:
     """
     Client that utilizes a :py:class:`Cluster<aiogremlin.driver.cluster.Cluster>`
@@ -17,7 +22,7 @@ class Client:
     :param asyncio.BaseEventLoop loop:
     :param dict aliases: Optional mapping for aliases. Default is `None`
     """
-    def __init__(self, cluster, loop, *, hostname=None, aliases=None):
+    def __init__(self, *, cluster, loop=None, hostname=None, aliases=None):
         self._cluster = cluster
         self._loop = loop
         if aliases is None:
@@ -50,8 +55,8 @@ class Client:
         await self._cluster.close()
 
     def alias(self, aliases):
-        client = Client(self._cluster, self._loop,
-                        aliases=aliases)
+        client = Client(cluster=self._cluster, loop=self._loop,
+                        hostname=self._hostname, aliases=aliases)
         return client
 
     async def submit(self, message, bindings=None):
@@ -80,5 +85,5 @@ class Client:
                 message.args.update({'bindings': bindings})
         conn = await self.cluster.get_connection(hostname=self._hostname)
         resp = await conn.write(message)
-        self._loop.create_task(conn.release_task(resp))
+        asyncio.create_task(conn.release_task(resp))
         return resp

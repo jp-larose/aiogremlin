@@ -1,28 +1,42 @@
+from aiogremlin.typehints import *
+
 import asyncio
 import aiohttp
 
 from gremlin_python.driver import transport
+from yarl import URL
+
+from autologging import logged, traced
+
+MaybeSSLContext = Optional[aiohttp.connector.SSLContext]
 
 
+@logged
+@traced
 class AiohttpTransport(transport.AbstractBaseTransport):
+    _client_session: aiohttp.ClientSession
+    _ws: aiohttp.client.ClientWebSocketResponse
 
-    def __init__(self, loop):
+    def __init__(self, loop: MaybeLoop = None) -> None:
         self._loop = loop
         self._connected = False
 
-    async def connect(self, url, *, ssl_context=None):
+    async def connect(self, url: Union[URL, str], *, ssl_context: MaybeSSLContext = None) -> None:
         await self.close()
         connector = aiohttp.TCPConnector(
             ssl_context=ssl_context, loop=self._loop)
         self._client_session = aiohttp.ClientSession(
             loop=self._loop, connector=connector)
+        # _task = self._loop.create_task(self._client_session.ws_connect(url))
+        # await _task
+        # self._ws = _task.result()
         self._ws = await self._client_session.ws_connect(url)
         self._connected = True
 
-    async def write(self, message):
+    async def write(self, message: bytes):
         coro = self._ws.send_bytes(message)
         if asyncio.iscoroutine(coro):
-          await coro
+            await coro
 
     async def read(self):
         data = await self._ws.receive()

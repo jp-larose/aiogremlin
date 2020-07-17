@@ -86,9 +86,9 @@ async def test_server_error(connection):
 
 
 @pytest.mark.asyncio
-async def test_cant_connect(event_loop, gremlin_server, unused_server_url):
+async def test_cant_connect(gremlin_server, unused_server_url):
     with pytest.raises(Exception):
-        await gremlin_server.get_connection(unused_server_url, event_loop)
+        await gremlin_server.get_connection(url=unused_server_url)
 
 
 @pytest.mark.asyncio

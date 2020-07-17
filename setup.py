@@ -13,7 +13,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='aiogremlin',
-    version='3.3.5',
+    version='3.3.6',
     license=__license__,
     author=__author__,
     author_email=__email__,
@@ -32,7 +32,7 @@ setup(
               'aiogremlin.remote'],
     python_requires='>=3.5',
     install_requires=[
-        'gremlinpython<=3.4.3',
+        'gremlinpython~=3.4.7',
         'aenum>=1.4.5',  # required gremlinpython dep
         'aiohttp>=2.2.5',
         'PyYAML>=3.12',
@@ -44,7 +44,8 @@ setup(
     tests_require=['pytest-asyncio',
                    'pytest-timeout',
                    'pytest',
-                   'mock'],
+                   'mock'
+    ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
@@ -56,6 +57,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         # uncomment if you test on these interpreters:
         # 'Programming Language :: Python :: Implementation :: IronPython',
         # 'Programming Language :: Python :: Implementation :: Jython',

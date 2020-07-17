@@ -1,5 +1,7 @@
 import asyncio
 import functools
+from autologging import logged, traced
+import logging
 
 from aiogremlin import exception
 
@@ -14,14 +16,19 @@ def error_handler(fn):
                 raise exception.GremlinServerError(
                     msg.status_code,
                     "{0}: {1}".format(msg.status_code, msg.message))
-            msg = msg.data
+            if isinstance(msg.data, list) and msg.data:
+                msg = msg.data[0]
+            else:
+                msg = msg.data
         return msg
     return wrapper
 
 
+@traced
+@logged
 class ResultSet:
     """Gremlin Server response implementated as an async iterator."""
-    def __init__(self, request_id, timeout, loop):
+    def __init__(self, request_id, timeout, loop=None):
         self._response_queue = asyncio.Queue(loop=loop)
         self._request_id = request_id
         self._loop = loop
@@ -76,17 +83,22 @@ class ResultSet:
     async def one(self):
         """Get a single message from the response stream"""
         if not self._response_queue.empty():
+            self.__log.debug("Response queue not empty")
             msg = self._response_queue.get_nowait()
         elif self.done.is_set():
+            self.__log.debug("'done' condition is set")
             msg = None
         else:
+            self.__log.debug(f"Trying to get from response queue.  {self._response_queue=} {self._timeout=} {self._loop=}")
             try:
                 msg = await asyncio.wait_for(self._response_queue.get(),
                                              timeout=self._timeout,
                                              loop=self._loop)
+                self._response_queue.task_done()
             except asyncio.TimeoutError:
                 self.close()
                 raise exception.ResponseTimeoutError('Response timed out')
+        self.__log.debug(f"{msg=} {type(msg)=}")
         return msg
 
     async def all(self):

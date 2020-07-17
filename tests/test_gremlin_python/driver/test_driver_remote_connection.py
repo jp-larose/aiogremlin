@@ -57,7 +57,7 @@ class TestDriverRemoteConnection(object):
         results = g.V().repeat(out()).times(2).name
         results = await results.toList()
         assert 2 == len(results)
-        assert "lop" in results
+        assert "lop" in results     # FIXME : Test fails here.
         assert "ripple" in results
         # # #
         assert 10 == await g.V().repeat(both()).times(5)[0:10].count().next()
@@ -142,7 +142,7 @@ class TestDriverRemoteConnection(object):
         assert "n" in keys
         n = await t.side_effects.get("n")
         assert isinstance(n, dict)
-        assert 2 == len(n)
+        assert 2 == len(n)      # FIXME : Test fails here.
         assert "lop" in n.keys()
         assert "ripple" in n.keys()
         assert 3 == n["lop"]
@@ -189,6 +189,6 @@ class TestDriverRemoteConnection(object):
         assert a == 'a'
 
         # Try to get 'b' directly from server, should throw error
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):      # FIXME : Test fails here.
             await t.side_effects._get('b')
         await remote_connection.close()

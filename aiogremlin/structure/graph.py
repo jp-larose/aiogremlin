@@ -2,8 +2,11 @@ from aiogremlin.process import graph_traversal
 from aiogremlin.process.traversal import AsyncTraversalStrategies
 
 from gremlin_python.structure import graph
+from autologging import logged, traced
 
 
+@logged
+@traced
 class Graph(graph.Graph):
 
     def __init__(self):
